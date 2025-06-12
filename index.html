@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Cube Position & Rotation Visualization</title>
+  <title>Scattered Cubes with Sequential Melodic Clicks</title>
   <style>
     body {
       margin: 0;
@@ -14,48 +14,41 @@
       flex-direction: column;
       height: 100vh;
     }
-
     #threeContainer {
       flex: 1 1 auto;
       position: relative;
     }
-
     canvas {
       width: 100%;
       height: 100%;
       display: block;
     }
-
     #graphs {
       display: flex;
       flex-direction: column;
-      flex: 0 0 300px; /* 150px for each graph */
+      flex: 0 0 200px;
       background: #000;
       border-top: 1px solid #333;
-      z-index: 10;
     }
-
     .graph {
       flex: 1;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0,0,0,0.85);
       border-top: 1px solid #222;
     }
-
     svg {
       width: 100%;
       height: 100%;
     }
-
     .axis path,
     .axis line {
       stroke: #aaa;
     }
-
     .axis text {
       fill: #aaa;
       font-size: 12px;
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 </head>
 <body>
   <div id="threeContainer"></div>
@@ -64,17 +57,42 @@
     <div id="rotationGraph" class="graph"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
 
-    const container = document.getElementById('threeContainer');
+    // Setup Web Audio context
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+    // Play a short "click" sound with given frequency
+    function playClick(freq) {
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      osc.type = 'square';
+      osc.frequency.value = freq;
+
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.005);
+      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.015);
+
+      osc.connect(gainNode).connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.02);
+
+      // Clean up after sound ends
+      osc.onended = () => {
+        osc.disconnect();
+        gainNode.disconnect();
+      };
+    }
+
+    // Three.js setup
+    const container = document.getElementById('threeContainer');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x111111);
 
     const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(5, 5, 10);
+    camera.position.set(0, 0, 50);
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -89,31 +107,31 @@
     const cubes = [];
     const originalPositions = [];
     const size = 1;
-    const spacing = 2;
-    const count = 5;
+    const spacing = 3;
+    const countX = 5;
+    const countY = 5;
 
-    const cubeGeometry = new THREE.BoxGeometry(size, size, size);
-    const sphereGeometry = new THREE.SphereGeometry(size * 0.7, 16, 16);
+    for(let x = 0; x < countX; x++) {
+      for(let y = 0; y < countY; y++) {
+        const color = new THREE.Color(Math.random(), Math.random(), Math.random());
+        const material = new THREE.MeshStandardMaterial({ color });
+        const geometry = new THREE.BoxGeometry(size, size, size);
+        const mesh = new THREE.Mesh(geometry, material);
 
-    for (let x = 0; x < count; x++) {
-      for (let y = 0; y < count; y++) {
-        for (let z = 0; z < count; z++) {
-          const color = new THREE.Color(Math.random(), Math.random(), Math.random());
-          const material = new THREE.MeshStandardMaterial({ color });
-          const mesh = new THREE.Mesh(cubeGeometry, material);
-          const pos = new THREE.Vector3(
-            (x - count / 2) * spacing,
-            (y - count / 2) * spacing,
-            (z - count / 2) * spacing
-          );
-          mesh.position.copy(pos);
-          originalPositions.push(pos.clone());
-          scene.add(mesh);
-          cubes.push(mesh);
-        }
+        const pos = new THREE.Vector3(
+          (x - countX/2 + 0.5) * spacing,
+          (y - countY/2 + 0.5) * spacing,
+          0
+        );
+
+        mesh.position.copy(pos);
+        originalPositions.push(pos.clone());
+        scene.add(mesh);
+        cubes.push(mesh);
       }
     }
 
+    // Track mouse for rotation
     const mouse = { x: 0, y: 0 };
     window.addEventListener('mousemove', (e) => {
       const rect = container.getBoundingClientRect();
@@ -121,26 +139,30 @@
       mouse.y = ((e.clientY - rect.top) / rect.height - 0.5) * Math.PI;
     });
 
+    // Scattered state toggle
     let scattered = false;
+
+    // Click state to handle audio unlocking and start loop
     window.addEventListener('click', () => {
-      scattered = !scattered;
-      cubes.forEach((mesh, i) => {
-        if (scattered) {
-          mesh.geometry = sphereGeometry;
-          const offset = new THREE.Vector3(
-            (Math.random() - 0.5) * 10,
-            (Math.random() - 0.5) * 10,
-            (Math.random() - 0.5) * 10
-          );
-          mesh.userData.targetPosition = originalPositions[i].clone().add(offset);
-        } else {
-          mesh.geometry = cubeGeometry;
-          mesh.userData.targetPosition = originalPositions[i].clone();
-        }
-      });
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(() => {
+          toggleScatter();
+        });
+      } else {
+        toggleScatter();
+      }
     });
 
-    // Graph setup
+    function toggleScatter() {
+      scattered = !scattered;
+      if (scattered) {
+        currentClickIndex = 0;
+        lastClickTime = 0;
+        requestAnimationFrame(loopClicks);
+      }
+    }
+
+    // D3.js Graph setup
     function setupGraph(containerId, xLabel, yLabel, yDomain) {
       const container = d3.select(containerId);
       const width = container.node().clientWidth;
@@ -156,7 +178,7 @@
       const g = svg.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
-      const xExtent = [-count * spacing / 2 - 5, count * spacing / 2 + 5];
+      const xExtent = [-countX * spacing / 2 - 5, countX * spacing / 2 + 5];
       const xScale = d3.scaleLinear().domain(xExtent).range([0, innerWidth]);
       const yScale = d3.scaleLinear().domain(yDomain).range([innerHeight, 0]);
 
@@ -183,28 +205,77 @@
         .text(yLabel);
 
       const pointsGroup = g.append('g');
-
       return { xScale, yScale, pointsGroup };
     }
 
-    const posGraph = setupGraph('#positionGraph', 'X Position', 'Z Position', [-count*spacing, count*spacing]);
+    const posGraph = setupGraph('#positionGraph', 'X Position', 'Y Position', [-countY * spacing, countY * spacing]);
     const rotGraph = setupGraph('#rotationGraph', 'X Position', 'Rotation Y', [-Math.PI, Math.PI]);
+
+    // Variables for sequential click loop
+    let currentClickIndex = 0;
+    let lastClickTime = 0;
+    const clickInterval = 150; // milliseconds between clicks
+
+    // Loop function to play clicks sequentially
+    function loopClicks(timestamp) {
+      if (!lastClickTime) lastClickTime = timestamp;
+      const elapsed = timestamp - lastClickTime;
+
+      if (elapsed >= clickInterval && scattered) {
+        const mesh = cubes[currentClickIndex];
+
+        // Calculate frequency based on x position and rotation y
+        const minX = -spacing * countX / 2;
+        const maxX = spacing * countX / 2;
+        const freqMin = 300;
+        const freqMax = 1200;
+        const xPos = mesh.position.x;
+        let baseFreq = ((xPos - minX) / (maxX - minX)) * (freqMax - freqMin) + freqMin;
+
+        const pitchShift = mesh.rotation.y * 300;
+        const finalFreq = baseFreq + pitchShift;
+
+        playClick(finalFreq);
+
+        currentClickIndex = (currentClickIndex + 1) % cubes.length;
+        lastClickTime = timestamp;
+      }
+
+      if (scattered) {
+        requestAnimationFrame(loopClicks);
+      }
+    }
 
     function animate() {
       requestAnimationFrame(animate);
 
-      cubes.forEach((mesh) => {
+      cubes.forEach((mesh, i) => {
         mesh.rotation.x = mouse.y;
         mesh.rotation.y = mouse.x;
 
-        if (mesh.userData.targetPosition) {
-          mesh.position.lerp(mesh.userData.targetPosition, 0.05);
+        if (scattered) {
+          if (!mesh.userData.scattered) {
+            const offset = new THREE.Vector3(
+              (Math.random() - 0.5) * 40, // increased distance from center
+              (Math.random() - 0.5) * 40,
+              0
+            );
+            mesh.userData.scattered = true;
+            mesh.userData.target = originalPositions[i].clone().add(offset);
+          }
+          mesh.position.lerp(mesh.userData.target, 0.05);
+        } else {
+          mesh.position.lerp(originalPositions[i], 0.05);
+          if (mesh.userData.scattered) {
+            mesh.userData.scattered = false;
+            mesh.userData.target = null;
+          }
         }
       });
 
       const posData = cubes.map(mesh => ({
         x: mesh.position.x,
-        z: mesh.position.z,
+        y: mesh.position.y,
         color: mesh.material.color.getStyle()
       }));
 
@@ -214,26 +285,16 @@
         color: mesh.material.color.getStyle()
       }));
 
-      // Position graph
       const posCircles = posGraph.pointsGroup.selectAll('circle').data(posData);
-      posCircles.enter()
-        .append('circle')
-        .attr('r', 5)
-        .attr('stroke', '#000')
-        .attr('stroke-width', 1)
+      posCircles.enter().append('circle').attr('r', 5)
         .merge(posCircles)
         .attr('cx', d => posGraph.xScale(d.x))
-        .attr('cy', d => posGraph.yScale(d.z))
+        .attr('cy', d => posGraph.yScale(d.y))
         .attr('fill', d => d.color);
       posCircles.exit().remove();
 
-      // Rotation graph
       const rotCircles = rotGraph.pointsGroup.selectAll('circle').data(rotData);
-      rotCircles.enter()
-        .append('circle')
-        .attr('r', 5)
-        .attr('stroke', '#000')
-        .attr('stroke-width', 1)
+      rotCircles.enter().append('circle').attr('r', 5)
         .merge(rotCircles)
         .attr('cx', d => rotGraph.xScale(d.x))
         .attr('cy', d => rotGraph.yScale(d.ry))
@@ -246,11 +307,9 @@
     animate();
 
     window.addEventListener('resize', () => {
-      const w = container.clientWidth;
-      const h = container.clientHeight;
-      camera.aspect = w / h;
+      camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
+      renderer.setSize(container.clientWidth, container.clientHeight);
     });
   </script>
 </body>
