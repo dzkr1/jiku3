@@ -1,292 +1,121 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html> 
+
 <head>
-  <meta charset="UTF-8" />
-  <title>Sound-Reactive Cubes with D3 Graphs</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #111;
-      font-family: monospace;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-    #threeContainer {
-      flex: 1;
-      position: relative;
-    }
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-    #graphs {
-      height: 200px;
-      display: flex;
-      flex-direction: row;
-      background: #000;
-      border-top: 1px solid #333;
-    }
-    .graph {
-      flex: 1;
-      background: rgba(0,0,0,0.85);
-      border-left: 1px solid #222;
-    }
-    svg {
-      width: 100%;
-      height: 100%;
-    }
-    .axis path,
-    .axis line {
-      stroke: #aaa;
-    }
-    .axis text {
-      fill: #aaa;
-      font-size: 12px;
-    }
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <meta charset="UTF-8">
+    <meta http-wquiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" contentl="width=device-width, initial-scale=1.0">
+    <title> Portofolio-dzkr</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700&family=Nunito:wght@400;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="css/indexstyle.css">
 </head>
+
 <body>
-  <div id="threeContainer"></div>
-  <div id="graphs">
-    <div id="positionGraph" class="graph"></div>
-    <div id="rotationGraph" class="graph"></div>
-  </div>
-
-  <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
-
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function playClick(freq, mesh) {
-      const osc = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-
-      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.01);
-      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
-
-      osc.connect(gainNode).connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.21);
-
-      // Visual reaction
-      const originalScale = mesh.scale.clone();
-      mesh.scale.set(2, 2, 2);
-      setTimeout(() => mesh.scale.copy(originalScale), 200);
-
-      osc.onended = () => {
-        osc.disconnect();
-        gainNode.disconnect();
-      };
-    }
-
-    const container = document.getElementById('threeContainer');
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x111111);
-
-    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.set(0, 0, 50);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    container.appendChild(renderer.domElement);
-
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(10, 10, 10);
-    scene.add(light);
-    scene.add(new THREE.AmbientLight(0x404040));
-
-    const cubes = [];
-    const originalPositions = [];
-    const size = 1;
-    const spacing = 3;
-    const countX = 5;
-    const countY = 5;
-
-    for(let x = 0; x < countX; x++) {
-      for(let y = 0; y < countY; y++) {
-        const color = new THREE.Color(Math.random(), Math.random(), Math.random());
-        const material = new THREE.MeshStandardMaterial({ color });
-        const geometry = new THREE.BoxGeometry(size, size, size);
-        const mesh = new THREE.Mesh(geometry, material);
-
-        const pos = new THREE.Vector3(
-          (x - countX/2 + 0.5) * spacing,
-          (y - countY/2 + 0.5) * spacing,
-          0
-        );
-
-        mesh.position.copy(pos);
-        originalPositions.push(pos.clone());
-        scene.add(mesh);
-        cubes.push(mesh);
-      }
-    }
-
-    const mouse = { x: 0, y: 0 };
-    window.addEventListener('mousemove', (e) => {
-      const rect = container.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width - 0.5) * Math.PI;
-      mouse.y = ((e.clientY - rect.top) / rect.height - 0.5) * Math.PI;
-    });
-
-    let scattered = false;
-
-    window.addEventListener('click', () => {
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume().then(toggleScatter);
-      } else {
-        toggleScatter();
-      }
-    });
-
-    function toggleScatter() {
-      scattered = !scattered;
-      if (scattered) {
-        currentClickIndex = 0;
-        lastClickTime = 0;
-        requestAnimationFrame(loopClicks);
-      }
-    }
-
-    function setupGraph(containerId, xLabel, yLabel, yDomain) {
-      const container = d3.select(containerId);
-      const width = container.node().clientWidth;
-      const height = container.node().clientHeight;
-      const margin = { top: 20, right: 20, bottom: 40, left: 50 };
-      const innerWidth = width - margin.left - margin.right;
-      const innerHeight = height - margin.top - margin.bottom;
-
-      const svg = container.append('svg')
-        .attr('width', width)
-        .attr('height', height);
-
-      const g = svg.append('g')
-        .attr('transform', `translate(${margin.left},${margin.top})`);
-
-      const xExtent = [-countX * spacing / 2 - 30, countX * spacing / 2 + 30];
-      const xScale = d3.scaleLinear().domain(xExtent).range([0, innerWidth]);
-      const yScale = d3.scaleLinear().domain(yDomain).range([innerHeight, 0]);
-
-      g.append('g')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .attr('class', 'axis')
-        .call(d3.axisBottom(xScale));
-
-      g.append('g')
-        .attr('class', 'axis')
-        .call(d3.axisLeft(yScale));
-
-      const pointsGroup = g.append('g');
-      return { xScale, yScale, pointsGroup };
-    }
-
-    const posGraph = setupGraph('#positionGraph', 'X Position', 'Y Position', [-spacing * countY - 10, spacing * countY + 10]);
-const rotGraph = setupGraph('#rotationGraph', 'X Position', 'Rotation Y', [-Math.PI * 1.5, Math.PI * 1.5]);
+    <header>
+        <div class="container">
+            
+            <section class="logo">
+                <a href="index.html">
+                <strong>jiku3</strong>
+            </a></section>
+                <nav>
+                    <ul id="menu">
+                        <li><a href="about.html">About</a></li>
+                        <li><a href="#Work">Work</a></li>
+                    </ul>
+                </nav>
+        </div>
+    </header>
 
 
-    let currentClickIndex = 0;
-    let lastClickTime = 0;
-    const clickInterval = 150;
+    <div class="container">
+        <div class="cobafoto">
+            
+            <div class="foto">
+                <a  href="artworks/mossmilitia.html"><img  class="thumb" src="images/artworks/mossmilitia/thumbnail.jpg" alt="apaya"></a> </div>
+            <div class="foto">
+                <a  href="artworks/okihana-nohga.html"><img  class="thumb" src="images/artworks/okihana-nohga/thumbnail.jpg" alt="apaya"></a></div>
+            <!-- <div class="foto">
+                <a  href="artworks/seikore25-miyashita-visual.html"><img  id="foto0" src="images/artworks/seikore25-miyashita/thumbnail.jpg" alt="apaya"></a></div> -->
+            <!-- <div class="foto">
+                <a  href="artworks/seikore25-itsuki-visual.html"><img  id="foto" src="images/artworks/seikore25-itsuki/thumbnail.jpg" alt="apaya"></a></div> -->
+            <!-- <div class="foto">
+                <a  href="artworks/seikore25-syuuto-visual.html"><img  id="foto0" src="images/artworks/seikore25-syuuto/thumbnail.jpg" alt="apaya"></a></div> -->
+            <!-- <div class="foto">
+                <a  href="artworks/seikore25-syoko-visual.html"><img  id="foto" src="images/artworks/seikore25-syoko/thumbnail.jpg" alt="apaya"></a></div>  -->
+            <div class="foto">
+                <a  href="artworks/windows.html"><img  class="thumb" src="images/artworks/windows/thumbnail.jpg" alt="apaya"></a></div>
+            <!-- <div class="foto">
+                <a  href="artworks/artxmedia.html"><img  id="foto" src="images/artworks/artxmedia/thumbnail.jpg" alt="apaya"></a></div> -->
+            <div class="foto">
+                <a  href="artworks/otootoo.html"><img  class="thumb" src="images/artworks/oto-ooto/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/mirumirareru.html"><img  class="thumb" src="images/artworks/mirumirareru/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/okihana-hounein.html"><img  class="thumb" src="images/artworks/okihana-hounein/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/okihana-fabcafe.html"><img  class="thumb" src="images/artworks/okihana-fabcafe/thumbnail.jpg" alt="apaya"></a></div>
+            <!-- <div class="foto">
+                <a  href="artworks/seikore24-itsuki-visual.html"><img  id="foto" src="images/artworks/seikore24-moritaitsuki/thumbnail.jpg" alt="apaya"></a></div> -->
+            <!-- <div class="foto">
+                <a  href="artworks/seikore24-syuuto-visual.html"><img  id="foto0" src="images/artworks/seikore24-shootman/thumbnail.jpg" alt="apaya"></a></div> -->
+            <!-- <div class="foto">
+                <a  href="artworks/seikore24-syoko-visual.html"><img  id="foto" src="images/artworks/seikore24-syoko/thumbnail.jpg" alt="apaya"></a></div>  -->
+            <div class="foto">
+                <a  href="artworks/biwako-hall.html"><img  class="thumb" src="images/artworks/biwako-hall/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/tree-house.html"><img  class="thumb" src="images/artworks/tree-house/thumbnail.jpg" alt="apaya"></a></div>
+             <div class="foto">
+                <a  href="artworks/pomdam.html"><img  class="thumb" src="images/artworks/pomdam/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/malam-indonesia.html"><img  class="thumb" src="images/artworks/malam-indonesia/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/x2.html"><img  class="thumb" src="images/artworks/x2/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/mirareru.html"><img  class="thumb" src="images/artworks/mirareru/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/r1.html"><img  class="thumb" src="images/artworks/r1/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/pure.html"><img  class="thumb" src="images/artworks/pure/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/conte.html"><img  class="thumb" src="images/artworks/conte/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/hikari-art.html"><img  class="thumb" src="images/artworks/hikari-art/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/navil-blue.html"><img  class="thumb" src="images/artworks/navil-blue/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/p1.html"><img  class="thumb" src="images/artworks/p1/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/paper-prototype.html"><img  class="thumb" src="images/artworks/paper-prototype/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/wave.html"><img  class="thumb" src="images/artworks/wave/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/pojok.html"><img  class="thumb" src="images/artworks/pojok/thumbnail.jpg" alt="apaya"></a></div>
+            <div class="foto">
+                <a  href="artworks/bunzoukei.html"><img  class="thumb" src="images/artworks/bunzoukei/thumbnail.jpg" alt="apaya"></a></div>   
 
-    function loopClicks(timestamp) {
-      if (!lastClickTime) lastClickTime = timestamp;
-      const elapsed = timestamp - lastClickTime;
+            
+           
+            
+            
 
-      if (elapsed >= clickInterval && scattered) {
-        const mesh = cubes[currentClickIndex];
+    </div>
+    <footer>
+        <div class="socialMedia">
+            <a href = "https://www.instagram.com/jiku.jiku.jiku/"><img src="Images/icons/email.png" alt=""></a>
+            <a href="https://www.youtube.com/@dzikrirahmat/featured" ><img src="Images/icons/youtube.png" alt=""></a> 
+            <a href="https://www.instagram.com/jiku.jiku.jiku/" ><img src="Images/icons/insta.png" alt=""></a> 
+        </div>
+        <h3>© 2023 Dzikri Rahmat. All Rights Reserved</h3>
+    </footer>
+   
 
-        const minX = -spacing * countX / 2;
-        const maxX = spacing * countX / 2;
-        const freqMin = 300;
-        const freqMax = 1200;
-        const xPos = mesh.position.x;
-        let baseFreq = ((xPos - minX) / (maxX - minX)) * (freqMax - freqMin) + freqMin;
+    
+    <script src="JavaScript/indexjs.js"></script>  
+   
 
-        const pitchShift = mesh.rotation.y * 300;
-        const finalFreq = baseFreq + pitchShift;
-
-        playClick(finalFreq, mesh);
-
-        currentClickIndex = (currentClickIndex + 1) % cubes.length;
-        lastClickTime = timestamp;
-      }
-
-      if (scattered) requestAnimationFrame(loopClicks);
-    }
-
-    function animate() {
-      requestAnimationFrame(animate);
-
-      cubes.forEach((mesh, i) => {
-        mesh.rotation.x = mouse.y;
-        mesh.rotation.y = mouse.x;
-
-        if (scattered) {
-          if (!mesh.userData.scattered) {
-            const offset = new THREE.Vector3(
-              (Math.random() - 0.5) * 40,
-              (Math.random() - 0.5) * 40,
-              0
-            );
-            mesh.userData.scattered = true;
-            mesh.userData.target = originalPositions[i].clone().add(offset);
-          }
-          mesh.position.lerp(mesh.userData.target, 0.05);
-        } else {
-          mesh.position.lerp(originalPositions[i], 0.05);
-          if (mesh.userData.scattered) {
-            mesh.userData.scattered = false;
-            mesh.userData.target = null;
-          }
-        }
-      });
-
-      const posData = cubes.map(mesh => ({
-        x: mesh.position.x,
-        y: mesh.position.y,
-        color: mesh.material.color.getStyle()
-      }));
-
-      const rotData = cubes.map(mesh => ({
-        x: mesh.position.x,
-        ry: mesh.rotation.y,
-        color: mesh.material.color.getStyle()
-      }));
-
-      const posCircles = posGraph.pointsGroup.selectAll('circle').data(posData);
-      posCircles.enter().append('circle').attr('r', 4)
-        .merge(posCircles)
-        .attr('cx', d => posGraph.xScale(d.x))
-        .attr('cy', d => posGraph.yScale(d.y))
-        .attr('fill', d => d.color);
-      posCircles.exit().remove();
-
-      const rotCircles = rotGraph.pointsGroup.selectAll('circle').data(rotData);
-      rotCircles.enter().append('circle').attr('r', 4)
-        .merge(rotCircles)
-        .attr('cx', d => rotGraph.xScale(d.x))
-        .attr('cy', d => rotGraph.yScale(d.ry))
-        .attr('fill', d => d.color);
-      rotCircles.exit().remove();
-
-      renderer.render(scene, camera);
-    }
-
-    animate();
-
-    window.addEventListener('resize', () => {
-      camera.aspect = container.clientWidth / container.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
-    });
-  </script>
 </body>
+
+
+
 </html>
