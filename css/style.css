@@ -1,0 +1,188 @@
+
+body {
+    margin: 0;
+    background-color: rgb(0, 0, 0);
+    
+}
+
+.container {
+    color: black;
+    max-width: 1440px;
+    margin: auto;
+    /* background-color: yellow; */
+    height: 100%;
+    padding: 0 16px;
+}
+
+
+header {
+    background-color: rgb(0, 0, 0);
+    box-shadow: 0 1px 6px 0 rgba(0,0,0,0.15);
+    height: 80px;
+}
+
+
+
+header .container {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+header .logo {
+    /* background-color: red; */
+    display: inline-block;
+    margin-left: 50px;
+}
+
+header .logo a {
+    text-decoration: none;
+    color: rgb(255, 255, 255);
+    font-size: 36px;
+}
+
+header nav {
+    /* background-color: aqua; */
+    display: inline-block;
+    color: white;
+    
+}
+
+header nav ul {
+    margin: 0;
+    padding: 0;
+    color: white;
+}
+
+header nav ul li {
+    display: inline-block;
+    color: white;
+}
+
+header nav ul li a{
+    color: white;
+    text-decoration: none;
+    font-size: 18px;
+    margin-right: 20px;
+
+}
+
+.grid-container {
+    color: black;
+    max-width: 1440px;
+    margin: auto;
+    padding-top: 50px;
+    display: flex;
+    justify-content: center;
+    /* background-color: rgb(17, 179, 66); */
+    gap: 50px 100px;
+}
+
+.container {
+    display: flex;
+    color: rgb(255, 255, 255);
+}
+
+.container1 {
+    color: rgb(255, 255, 255);
+    margin-left: 50px;
+}
+
+.container1 #profile  {
+    border-radius: 20px;
+    max-width: 300px;
+    border-radius: 20px;
+}
+
+.grid-container div ul li{
+    color: rgb(255, 255, 255);
+   list-style: none;
+
+}
+
+footer {
+    /* 
+     margin: auto;
+     height: 275px;
+     max-width: 1440px;
+     background-color: rgb(248, 248, 248);*/
+     
+    background-color: rgb(0, 0, 0);
+    box-shadow: 0 1px 6px 0 rgba(0,0,0,0.15);
+    height: 275px;
+    
+   
+ }
+ 
+ footer .socialMedia {
+    color: white;
+     display: flex;
+     justify-content: center;
+ }
+ 
+ footer .socialMedia img{
+    color: white;
+    width: 50px;
+     margin: 50px;
+     
+ }
+ 
+ footer h3{
+    color: white;
+    display: flex;
+    justify-content: center;
+    font-size: 10pt;
+    margin-bottom: 0px;
+ }
+ 
+ 
+
+
+
+ .heroSlider {
+    position: relative;
+    width: 100%;
+    height: 70vh;
+    overflow: hidden;
+}
+
+.sliderWrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.slide {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.slide.active {
+    opacity: 1;
+}
+
+.sliderArrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 40px;
+    color: white;
+    cursor: pointer;
+    padding: 10px;
+    user-select: none;
+    z-index: 10;
+}
+
+.sliderArrow.left {
+    left: 20px;
+}
+
+.sliderArrow.right {
+    right: 20px;
+}
+ 
