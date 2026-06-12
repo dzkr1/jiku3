@@ -84,7 +84,19 @@ header nav ul li a{
     color: rgb(255, 255, 255);
 }
 
+.container p {
+    margin-top: 180px;
+    color: rgb(255, 255, 255);
+    max-width: 600px;
+    line-height: 1.5;
+}
+
 .container1 {
+    color: rgb(255, 255, 255);
+    margin-left: 50px;
+}
+
+.containerRireki {
     color: rgb(255, 255, 255);
     margin-left: 50px;
 }
